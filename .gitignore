@@ -1,0 +1,3 @@
+tmp/
+# Playwright CLI output
+.playwright-cli/
