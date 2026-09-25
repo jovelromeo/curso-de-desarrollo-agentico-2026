@@ -1,8 +1,25 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "model": "litellm/deepseek/deepseek-v4.1-flash",
+  "providers": {
+    "litellm": {
+      "name": "LiteLLM Curso",
+      "env": ["OPENAI_COMPATIBLE_API_KEY"],
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "<openai-compatible-url>"
+      },
+      "models": {
+        "deepseek/deepseek-v4.1-flash": {
+          "name": "DeepSeek v4.1 Flash"
+        }
+      }
+    }
+  },
   "mcp": {
     "postgres": {
       "type": "local",
+      "enabled": false,
       "command": ["npx", "-y", "mcp-postgres-server"],
       "environment": {
         "PG_HOST": "localhost",

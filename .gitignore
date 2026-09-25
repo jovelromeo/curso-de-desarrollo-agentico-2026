@@ -1,3 +1,4 @@
 tmp/
+node_modules/
 # Playwright CLI output
 .playwright-cli/
