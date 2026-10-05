@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jev 1.13 · Copiloto autónomo</title>
+<style>
+  :root {
+    --bg:#0e1117; --panel:#161b22; --panel-2:#1c232d; --border:#2a3240;
+    --text:#e6edf3; --muted:#8b98a9; --accent:#58a6ff; --accent-2:#7ee787;
+    --warn:#f2cc60; --danger:#ff7b72;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px 16px 64px; background:var(--bg); color:var(--text);
+    font-family:var(--sans); line-height:1.5; max-width:1120px; margin-inline:auto; }
+  h1 { font-size:1.6rem; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 20px; font-size:.95rem; }
+  a { color:var(--accent); }
+  .banner { background:rgba(242,204,96,.10); border:1px solid rgba(242,204,96,.45);
+    border-left:4px solid var(--warn); border-radius:8px; padding:12px 14px; margin-bottom:20px; font-size:.9rem; }
+  .banner strong { color:var(--warn); }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  label.field { display:block; font-size:.8rem; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em; }
+  input[type=password] { width:100%; background:var(--panel-2); color:var(--text); border:1px solid var(--border);
+    border-radius:6px; padding:9px 11px; font-size:.95rem; }
+  input:focus { outline:2px solid var(--accent); }
+  button { background:var(--accent); color:#04121f; border:0; border-radius:6px; padding:9px 14px; font-size:.9rem; font-weight:600; cursor:pointer; }
+  button:hover { filter:brightness(1.1); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button.ghost { background:transparent; color:var(--text); border:1px solid var(--border); }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .spread { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+  details.game { background:var(--panel); border:1px solid var(--border); border-radius:10px; margin-bottom:14px; overflow:hidden; }
+  details.game > summary { cursor:pointer; padding:14px 16px; list-style:none; display:flex; align-items:center; gap:12px; font-size:1.1rem; font-weight:600; }
+  details.game > summary::-webkit-details-marker { display:none; }
+  details.game > summary::before { content:"▸"; color:var(--accent); transition:transform .15s ease; }
+  details.game[open] > summary::before { transform:rotate(90deg); }
+  details.game[open] > summary { border-bottom:1px solid var(--border); }
+  .game-body { padding:16px; }
+  .tag { font-size:.72rem; color:var(--muted); border:1px solid var(--border); border-radius:999px; padding:2px 9px; font-weight:500; }
+  .sim-grid { display:grid; grid-template-columns:1fr 340px; gap:14px; align-items:start; }
+  @media (max-width:880px) { .sim-grid { grid-template-columns:1fr; } }
+  canvas { width:100%; height:auto; background:#0b0f14; border:1px solid var(--border); border-radius:10px; display:block; }
+  .side h3 { font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:0 0 8px; }
+  .side .block { background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px; }
+  .kv { display:flex; justify-content:space-between; gap:10px; padding:3px 0; font-size:.9rem; }
+  .kv span:first-child { color:var(--muted); }
+  .kv b { font-family:var(--mono); font-weight:600; }
+  .dir { display:flex; align-items:center; gap:12px; }
+  .dir .arrow { font-size:2rem; line-height:1; }
+  .bar-row { margin:8px 0; }
+  .bar-row .bl { display:flex; justify-content:space-between; font-size:.82rem; margin-bottom:3px; }
+  .bar { height:14px; background:#0b0f14; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .bar > i { display:block; height:100%; width:0; transition:width .2s ease; }
+  .fill-steer { background:linear-gradient(90deg,#1f6feb,#58a6ff); }
+  .fill-brake { background:linear-gradient(90deg,#a83232,#ff7b72); }
+  .fill-accel { background:linear-gradient(90deg,#2ea043,#7ee787); }
+  .chip { display:inline-block; padding:3px 10px; border-radius:999px; font-size:.78rem; font-weight:600; border:1px solid var(--border); }
+  .chip.none { color:var(--accent-2); border-color:rgba(126,231,135,.5); }
+  .chip.watch { color:var(--warn); border-color:rgba(242,204,96,.5); }
+  .chip.act { color:var(--danger); border-color:rgba(255,123,114,.6); background:rgba(255,123,114,.1); }
+  .chip.idle { color:var(--muted); }
+  .log { font-family:var(--mono); font-size:.8rem; max-height:180px; overflow:auto; }
+  .log div { padding:3px 0; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .log div:last-child { border-bottom:0; }
+  .hint { color:var(--muted); font-size:.82rem; margin-top:8px; }
+  .err { color:var(--danger); font-size:.88rem; margin-top:10px; white-space:pre-wrap; }
+  .meter { font-family:var(--mono); font-size:.82rem; color:var(--muted); }
+  .meter b { color:var(--text); }
+  code { background:var(--panel-2); border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-family:var(--mono); font-size:.85em; }
+</style>
+</head>
+<body>
+
+<h1>🏎️ Jev 1.13 · Copiloto autónomo</h1>
+<p class="sub">Jev maneja un circuito: recibe telemetría real (errores respecto de la pista, lookahead de curvas) y devuelve volante, freno, acelerador y alerta. <code>typesafe/jev-1.13</code> vía la Decisions API de OpenRouter.</p>
+
+<div class="banner">
+  <strong>⚠️ Solo para práctica local.</strong> Tu API key se guarda <b>únicamente en memoria</b> (se pierde al recargar) y se envía directo a OpenRouter.
+  <b>Nunca hardcodees ni publiques una API key en un frontend de producción</b>: en producción el llamado debe pasar por un backend/proxy.
+</div>
+
+<div class="card">
+  <div class="spread">
+    <div style="flex:1 1 320px">
+      <label class="field" for="apiKey">🔑 OpenRouter API key</label>
+      <input id="apiKey" type="password" placeholder="sk-or-..." autocomplete="off" spellcheck="false" />
+    </div>
+    <div style="flex:0 0 auto; align-self:flex-end"><button id="keyBtn" class="ghost">Guardar en memoria</button></div>
+  </div>
+  <div class="hint">Modelo fijo: <code>typesafe/jev-1.13</code> (sin router).</div>
+  <div class="row" style="margin-top:12px">
+    <span id="keyState" class="tag">Sin key</span>
+    <span class="meter">Llamadas: <b id="mCalls">0</b> · Tokens in: <b id="mTokens">0</b> · Costo: <b id="mCost">$0.000000</b> · Proy. $/1000: <b id="mProj">$0.000</b></span>
+  </div>
+</div>
+
+<details class="game" open>
+  <summary>🏁 Auto-drive: Jev maneja el circuito <span class="tag">choice + score</span></summary>
+  <div class="game-body">
+    <div class="row" style="margin-bottom:14px">
+      <button id="btnRun">▶️ Iniciar</button>
+      <button id="btnStep" class="ghost">⏭️ Paso</button>
+      <button id="btnReset" class="ghost">🔄 Reiniciar</button>
+      <button id="btnTrack" class="ghost">🎲 Nuevo circuito</button>
+      <span class="tag" id="statusTag">detenido</span>
+    </div>
+
+    <div class="sim-grid">
+      <div>
+        <canvas id="track" width="900" height="560"></canvas>
+        <div class="hint">🟢 auto · 🔵 objetivo del lazo local (pure-pursuit) · 🛡️ aparece cuando el lazo local corrige. Rojo = fuera de pista.</div>
+      </div>
+      <div class="side">
+        <div class="block"><h3>📡 Telemetría (state)</h3><div id="telemetry"></div></div>
+        <div class="block"><h3>🧠 Decisión de Jev</h3><div id="decision"><span class="chip idle">esperando…</span></div></div>
+        <div class="block"><h3>🧾 Historial</h3><div id="log" class="log"></div></div>
+      </div>
+    </div>
+    <div id="simErr" class="err"></div>
+  </div>
+</details>
+
+<p class="hint">Docs: <a href="https://openrouter.ai/typesafe/jev-1.13" target="_blank" rel="noopener">typesafe/jev-1.13</a> · <a href="https://openrouter.ai/docs/guides/community/jev" target="_blank" rel="noopener">Guía de Jev</a>.</p>
+
+<script>
+"use strict";
+
+/* ============================================================
+   1. Núcleo: API key en memoria + llamada a Jev
+   ============================================================ */
+const JEV_MODEL = "typesafe/jev-1.13";
+const JEV_URL = "https://openrouter.ai/api/alpha/decisions";
+let apiKey = "";
+const app = { calls: 0, inputTokens: 0, cost: 0 };
+
+const $ = (id) => document.getElementById(id);
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fmtUSD = (n) => "$" + Number(n).toFixed(6);
+const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+const deg = (r) => (r * 180) / Math.PI;
+
+function updateMeter() {
+  $("mCalls").textContent = app.calls;
+  $("mTokens").textContent = app.inputTokens.toLocaleString("es-AR");
+  $("mCost").textContent = fmtUSD(app.cost);
+  $("mProj").textContent = app.calls ? "$" + ((app.cost / app.calls) * 1000).toFixed(4) : "$0.000";
+}
+function setKeyState() {
+  const ok = apiKey.length > 0;
+  $("keyState").textContent = ok ? "Key en memoria ✓" : "Sin key";
+  $("keyState").style.color = ok ? "var(--accent-2)" : "";
+}
+$("keyBtn").addEventListener("click", () => { apiKey = $("apiKey").value.trim(); setKeyState(); });
+$("apiKey").addEventListener("keydown", (e) => { if (e.key === "Enter") $("keyBtn").click(); });
+
+async function jev(stateValue, questions) {
+  if (!apiKey) throw new Error("Falta la API key de OpenRouter. Guardala arriba (solo queda en memoria).");
+  const res = await fetch(JEV_URL, {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: JEV_MODEL, state: stateValue, questions }),
+  });
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch (e) { throw new Error("Respuesta no JSON (" + res.status + "): " + text.slice(0, 200)); }
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ("Error HTTP " + res.status));
+  if (data.usage) { app.calls += 1; app.inputTokens += data.usage.input_tokens || 0; app.cost += data.usage.cost || 0; updateMeter(); }
+  return data;
+}
+
+/* ============================================================
+   2. Circuito suave (polígono redondeado)
+   ============================================================ */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const sub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
+const add = (a, b) => ({ x: a.x + b.x, y: a.y + b.y });
+const mul = (a, k) => ({ x: a.x * k, y: a.y * k });
+const vlen = (a) => Math.hypot(a.x, a.y);
+const norm = (a) => { const l = vlen(a) || 1; return { x: a.x / l, y: a.y / l }; };
+const dot = (a, b) => a.x * b.x + a.y * b.y;
+
+function makeTrack(seed) {
+  const rand = mulberry32(seed);
+  const N = 4;                                // rectángulo redondeado: 4 curvas
+  const A = 150 + rand() * 35;                // semilargo 150..185 m
+  const B = 100 + rand() * 30;                // semiancho 100..130 m
+  const cw = rand() < 0.5 ? 1 : -1;
+  const rot = rand() * Math.PI * 2;
+  const verts = [
+    { x: A, y: B }, { x: -A, y: B }, { x: -A, y: -B }, { x: A, y: -B },
+  ].map((p) => ({ x: p.x * (0.96 + rand() * 0.08), y: p.y * (0.96 + rand() * 0.08) }));
+  const cs = Math.cos(rot), sn = Math.sin(rot);
+  for (const p of verts) { const x = p.x * cs - p.y * sn, y = p.x * sn + p.y * cs; p.x = x; p.y = y; }
+  if (cw < 0) verts.reverse();
+  const baseR = 55 + rand() * 20;             // radio de curva 55..75 m
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const prev = verts[(i - 1 + N) % N], cur = verts[i], next = verts[(i + 1) % N];
+    const inV = norm(sub(cur, prev)), outV = norm(sub(next, cur));
+    const turn = Math.acos(clamp(dot(inV, outV), -1, 1));
+    if (turn < 0.05) { pts.push({ x: cur.x, y: cur.y }); continue; }
+    const edgeIn = vlen(sub(cur, prev)), edgeOut = vlen(sub(next, cur));
+    const t = Math.min(baseR / Math.tan(turn / 2), edgeIn * 0.46, edgeOut * 0.46);
+    const rEff = t * Math.tan(turn / 2);
+    const cStart = sub(cur, mul(inV, t)), cEnd = add(cur, mul(outV, t));
+    const bis = norm(add(mul(inV, -1), outV));
+    const center = add(cur, mul(bis, rEff / Math.sin(turn / 2)));
+    const a0 = Math.atan2(cStart.y - center.y, cStart.x - center.x);
+    const da = wrap(Math.atan2(cEnd.y - center.y, cEnd.x - center.x) - a0);
+    const steps = Math.max(6, Math.round(Math.abs(da) * rEff / 3));
+    for (let s = 0; s < steps; s++) { const a = a0 + da * (s / steps); pts.push({ x: center.x + Math.cos(a) * rEff, y: center.y + Math.sin(a) * rEff }); }
+  }
+  const n = pts.length, segLen = new Array(n), cum = new Array(n), ang = new Array(n), curv = new Array(n);
+  for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; segLen[i] = Math.hypot(b.x - a.x, b.y - a.y); ang[i] = Math.atan2(b.y - a.y, b.x - a.x); }
+  let acc = 0; for (let i = 0; i < n; i++) { cum[i] = acc; acc += segLen[i]; }
+  for (let i = 0; i < n; i++) curv[i] = wrap(ang[(i + 1) % n] - ang[i]) / (((segLen[i] + segLen[(i + 1) % n]) / 2) || 1e-6);
+  const sm = new Array(n);
+  for (let i = 0; i < n; i++) { let s = 0; for (let k = -4; k <= 4; k++) s += curv[(i + k + n) % n]; sm[i] = s / 9; }
+  return { pts, n, segLen, cum, ang, curv: sm, L: acc };
+}
+function indexAt(tr, s) {
+  s = ((s % tr.L) + tr.L) % tr.L;
+  let lo = 0, hi = tr.n - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (tr.cum[mid] <= s) lo = mid; else hi = mid - 1; }
+  return lo;
+}
+function pointAt(tr, s) {
+  s = ((s % tr.L) + tr.L) % tr.L;
+  const i = indexAt(tr, s), p0 = tr.pts[i], p1 = tr.pts[(i + 1) % tr.n];
+  const l = tr.segLen[i] || 1e-6, t = clamp((s - tr.cum[i]) / l, 0, 1);
+  return { x: p0.x + (p1.x - p0.x) * t, y: p0.y + (p1.y - p0.y) * t, angle: tr.ang[i] };
+}
+function nearest(tr, px, py) {
+  let best = Infinity, bi = 0;
+  for (let i = 0; i < tr.n; i++) { const p = tr.pts[i]; const d = (p.x - px) ** 2 + (p.y - py) ** 2; if (d < best) { best = d; bi = i; } }
+  let bp = null;
+  for (const j of [bi, (bi - 1 + tr.n) % tr.n]) {
+    const a = tr.pts[j], b = tr.pts[(j + 1) % tr.n], ab = sub(b, a);
+    const t = clamp(dot(sub({ x: px, y: py }, a), ab) / (dot(ab, ab) || 1e-6), 0, 1);
+    const proj = { x: a.x + ab.x * t, y: a.y + ab.y * t }, dd = (proj.x - px) ** 2 + (proj.y - py) ** 2;
+    if (!bp || dd < bp.dd) bp = { dd, proj, ang: tr.ang[j], s: tr.cum[j] + tr.segLen[j] * t, j };
+  }
+  const d = sub({ x: px, y: py }, bp.proj);
+  const rightN = { x: -Math.sin(bp.ang), y: Math.cos(bp.ang) };
+  return { lat: dot(d, rightN), ang: bp.ang, s: bp.s, j: bp.j };
+}
+
+/* ============================================================
+   3. Simulación (modelo de bicicleta) + lazo local pure-pursuit
+   ============================================================ */
+const L = 2.5;                         // distancia entre ejes (m)
+const DMAX = 25 * Math.PI / 180;       // volante máximo
+const DT = 0.5;                        // período fijo (s)
+const ROAD_HALF = 9;                   // semiancho de pista (m)
+const A_ACCEL = 7, A_BRAKE = 15;       // m/s²
+const G = 9.81;
+const VMAX = { dry: 27, wet: 20, gravel: 15 };     // ~97/72/54 km/h
+const MU = { dry: 0.95, wet: 0.70, gravel: 0.50 }; // agarre lateral
+
+const cvs = $("track"), ctx = cvs.getContext("2d");
+let track = null, view = { scale: 1, ox: 0, oy: 0 };
+let env = { grip: "dry", visibility: "good" };
+const car = { x: 0, y: 0, th: 0, v: 0, delta: 0 };
+let stats = { dist: 0, laps: 0, offTicks: 0, ticks: 0, maxLat: 0, sumLat: 0 };
+let lastPP = { x: 0, y: 0 }, safetyW = 0;
+
+function pickGrip() { const r = Math.random(); return r < 0.6 ? "dry" : r < 0.85 ? "wet" : "gravel"; }
+function newTrack(seed) {
+  track = makeTrack(seed === undefined ? Math.floor(Math.random() * 1e9) : seed);
+  computeView();
+}
+function resetCar() {
+  const p = pointAt(track, 0);
+  car.x = p.x; car.y = p.y; car.th = p.angle; car.v = 0; car.delta = 0;
+  env.grip = pickGrip(); env.visibility = Math.random() < 0.25 ? "low" : "good";
+  stats = { dist: 0, laps: 0, offTicks: 0, ticks: 0, maxLat: 0, sumLat: 0 };
+  safetyW = 0; draw();
+}
+function computeView() {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const p of track.pts) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); }
+  const w = maxX - minX, h = maxY - minY, pad = 46;
+  view.scale = Math.min((cvs.width - 2 * pad) / w, (cvs.height - 2 * pad) / h);
+  view.ox = pad + ((cvs.width - 2 * pad) - w * view.scale) / 2 - minX * view.scale;
+  view.oy = pad + ((cvs.height - 2 * pad) - h * view.scale) / 2 - minY * view.scale;
+}
+const toScreen = (p) => ({ x: p.x * view.scale + view.ox, y: p.y * view.scale + view.oy });
+function purePursuit(tr, c, Ld) {
+  const n = nearest(tr, c.x, c.y);
+  const P = pointAt(tr, n.s + Ld);
+  lastPP = P;
+  const alpha = wrap(Math.atan2(P.y - c.y, P.x - c.x) - c.th);
+  return Math.atan2(2 * L * Math.sin(alpha), Ld);
+}
+
+/* ============================================================
+   4. Preguntas a Jev
+   ============================================================ */
+const PCT = ["0%", "25%", "50%", "75%", "100%"];
+function buildQuestions() {
+  return {
+    steering_direction: {
+      type: "choice",
+      instructions: "Based on the telemetry, which way should the driver turn the steering wheel now? Use lateral_error and heading_error to correct the line, and track_ahead to prepare for the next curve. Positive lateral_error means the car is right of the centerline. Positive heading_error means the car points left of the track direction.",
+      criteria: {
+        left: "Turn the wheel left (counter-clockwise), e.g. the car is right of the line or a left curve is coming.",
+        straight: "No steering input; keep the current heading.",
+        right: "Turn the wheel right (clockwise), e.g. the car is left of the line or a right curve is coming.",
+      },
+    },
+    steering_percent: { type: "score", instructions: "How much steering input should be applied? 0% = none, 100% = maximum.", criteria: PCT },
+    brakes_percent: { type: "score", instructions: "How much brake pressure should be applied? 0% = none, 100% = maximum braking. Brake when speed is above speed_limit; the bigger the excess and the closer the curve, the more pressure. Also brake for low grip or worn tires.", criteria: PCT },
+    acceleration_percent: { type: "score", instructions: "How much throttle should be applied? 0% = none, 100% = full throttle. Push hard on straights, but ease off as speed approaches speed_limit before a curve or when grip is low.", criteria: PCT },
+    alert: {
+      type: "choice",
+      instructions: "What is the driver alert level for this telemetry?",
+      criteria: {
+        none: "Everything is under control; no attention needed.",
+        watch: "Conditions need attention (curve, low grip, wear, or low visibility).",
+        act: "Immediate action is required to avoid an incident.",
+      },
+    },
+  };
+}
+const scoreToPct = (a) => Math.round((a && typeof a.score === "number" ? a.score : 0) * 25);
+
+/* ============================================================
+   5. Tick: telemetría -> Jev -> lazo local -> física
+   ============================================================ */
+const LOOKAHEAD = [15, 45, 80, 120, 170];
+function sense() {
+  const n = nearest(track, car.x, car.y);
+  const he = wrap(n.ang - car.th);
+  const aLat = MU[env.grip] * G * (1 - (car.wear || 0) / 100 * 0.35);
+  const ahead = LOOKAHEAD.map((d) => {
+    const s = n.s + d, i = indexAt(track, s), c = track.curv[i];
+    return { d, curvature: Math.round(c * 1e4) / 1e4, dir: c > 0.004 ? "right" : c < -0.004 ? "left" : "straight" };
+  });
+  let speedLimit = VMAX[env.grip] || VMAX.dry;
+  const aBrake = 0.55 * A_BRAKE;
+  for (const a of ahead) {
+    const k = Math.abs(a.curvature);
+    const vSafe = k > 1e-4 ? Math.sqrt(0.65 * aLat / k) : speedLimit;
+    speedLimit = Math.min(speedLimit, Math.sqrt(vSafe * vSafe + 2 * aBrake * a.d)); // puedo frenar hasta vSafe en d metros
+  }
+  speedLimit = Math.round(speedLimit * 3.6);
+  car.limit = speedLimit;
+  return {
+    state: {
+      speed: Math.round(car.v * 3.6),
+      speed_limit: speedLimit,
+      steering_angle: Math.round(deg(car.delta)),
+      lateral_error: Math.round(n.lat * 10) / 10,
+      heading_error: Math.round(deg(he)),
+      track_ahead: ahead,
+      grip: env.grip,
+      visibility: env.visibility,
+      tire_wear: Math.round(car.wear || 0),
+      next_report_ms: Math.round(DT * 1000),
+    },
+    lat: n.lat, he, s: n.s,
+  };
+}
+
+function applyControls(ans, n) {
+  const dir = ans.steering_direction && ans.steering_direction.choice;
+  const dJev = (dir === "left" ? -1 : dir === "right" ? 1 : 0) * (scoreToPct(ans.steering_percent) / 100) * DMAX;
+  const dPP = purePursuit(track, car, clamp(0.4 * car.v + 4, 6, 12));
+  const w = clamp(Math.max(Math.abs(n.lat) / 4.5, Math.abs(n.he) / (16 * Math.PI / 180)), 0, 1);
+  safetyW = w;
+  let dTarget = dJev * (1 - w) + dPP * w;
+  const maxStep = 18 * Math.PI / 180;
+  car.delta += clamp(dTarget - car.delta, -maxStep, maxStep);
+  car.delta = clamp(car.delta, -DMAX, DMAX);
+  car.brakes = scoreToPct(ans.brakes_percent);
+  car.accelPct = scoreToPct(ans.acceleration_percent);
+  if (w > 0.9) car.brakes = Math.max(car.brakes, 40);   // red de seguridad: frena si se va muy lejos
+  car.alert = (ans.alert && ans.alert.choice) || "none";
+}
+
+function advance() {
+  const vmax = VMAX[env.grip] || VMAX.dry;
+  const aLat = MU[env.grip] * G * (1 - (car.wear || 0) / 100 * 0.35);
+  const a = A_ACCEL * (car.accelPct / 100) + 0.5;              // + creep para no estancarse
+  const b = A_BRAKE * (car.brakes / 100);
+  const drag = 0.0022 * car.v * car.v;
+  car.v = clamp(car.v + (a - b - drag - 0.4) * DT, 0, vmax);
+  // subviraje: si la velocidad excede el agarre lateral, el auto gira menos y se va de ancho
+  const yawReq = (car.v / L) * Math.tan(car.delta);
+  const yawMax = aLat / Math.max(car.v, 1);
+  if (Math.abs(yawReq) > yawMax) car.v *= 0.99;            // el deslizamiento resta velocidad
+  car.th += clamp(yawReq, -yawMax, yawMax) * DT;
+  car.x += car.v * Math.cos(car.th) * DT;
+  car.y += car.v * Math.sin(car.th) * DT;
+  stats.dist += car.v * DT;
+  stats.laps = Math.floor(stats.dist / track.L);
+  const n = nearest(track, car.x, car.y);
+  stats.ticks++; stats.sumLat += Math.abs(n.lat); stats.maxLat = Math.max(stats.maxLat, Math.abs(n.lat));
+  car.offroad = Math.abs(n.lat) > ROAD_HALF;
+  if (car.offroad) { car.v *= 0.92; stats.offTicks++; }
+  car.wear = clamp((car.wear || 0) + (car.v / vmax) * 0.08 + (Math.abs(n.lat) / ROAD_HALF) * 0.08, 0, 100);
+  if (Math.random() < 0.008) { env.grip = pickGrip(); env.visibility = Math.random() < 0.25 ? "low" : "good"; }
+}
+
+let busy = false;
+async function tick() {
+  if (busy) return;
+  busy = true;
+  $("simErr").textContent = "";
+  try {
+    const t = sense();
+    renderTelemetry(t.state);
+    const resp = await jev(t.state, buildQuestions());
+    const ans = resp.answers;
+    renderDecision(ans);
+    applyControls(ans, t);
+    advance();
+    draw();
+    pushLog(t.state, ans);
+  } catch (err) {
+    $("simErr").textContent = String(err.message || err);
+    running = false; syncRunBtn();
+  } finally {
+    busy = false;
+  }
+}
+
+/* ============================================================
+   6. Render
+   ============================================================ */
+const kv = (k, v) => '<div class="kv"><span>' + k + '</span><b>' + v + '</b></div>';
+function renderTelemetry(s) {
+  const gripEmoji = { dry: "☀️ seco", wet: "🌧️ mojado", gravel: "🪨 gravilla" }[s.grip] || s.grip;
+  const ahead = s.track_ahead.map((c) => (c.dir === "straight" ? "•" : c.dir === "left" ? "↩️" : "↪️") + c.d + "m").join("  ");
+  $("telemetry").innerHTML =
+    kv("💨 Velocidad", s.speed + " km/h") +
+    kv("🚦 Límite seguro", s.speed_limit + " km/h") +
+    kv("🎯 Volante", s.steering_angle + "°") +
+    kv("↔️ Error lateral", s.lateral_error + " m") +
+    kv("🧭 Error de rumbo", s.heading_error + "°") +
+    kv("🛣️ Curvas adelante", ahead) +
+    kv("🌤️ Superficie", gripEmoji) +
+    kv("🌫️ Visibilidad", s.visibility === "low" ? "🌫️ baja" : "👁️ buena") +
+    kv("🛞 Desgaste", s.tire_wear + " %") +
+    kv("⏱️ Próximo reporte", s.next_report_ms + " ms");
+}
+const bar = (label, pct, cls) =>
+  '<div class="bar-row"><div class="bl"><span>' + label + '</span><b>' + pct + '%</b></div>' +
+  '<div class="bar"><i class="' + cls + '" style="width:' + pct + '%"></i></div></div>';
+function renderDecision(ans) {
+  const dir = ans.steering_direction.choice;
+  const arrow = dir === "left" ? "⬅️" : dir === "right" ? "➡️" : "⬆️";
+  const dirLabel = dir === "left" ? "izquierda" : dir === "right" ? "derecha" : "recto";
+  const conf = typeof ans.steering_direction.confidence === "number" ? ans.steering_direction.confidence : null;
+  const alert = (ans.alert && ans.alert.choice) || "none";
+  const alertLabel = { none: "😌 none", watch: "👀 watch", act: "🚨 act" }[alert] || alert;
+  const safePct = Math.round(safetyW * 100);
+  $("decision").innerHTML =
+    '<div class="dir"><div class="arrow">' + arrow + '</div><div><b>' + dirLabel + '</b>' +
+      (conf === null ? "" : '<div class="hint" style="margin:0">confianza ' + conf.toFixed(2) + '</div>') + '</div></div>' +
+    '<div style="margin-top:6px">' +
+      bar("🎯 Volante", scoreToPct(ans.steering_percent), "fill-steer") +
+      bar("🛑 Freno", scoreToPct(ans.brakes_percent), "fill-brake") +
+      bar("⚡ Acelerador", scoreToPct(ans.acceleration_percent), "fill-accel") +
+    '</div>' +
+    '<div style="margin-top:10px"><span class="chip ' + alert + '">⚠️ alerta: ' + alertLabel + '</span></div>' +
+    '<div class="hint" style="margin-top:6px">🛡️ corrección local: ' + safePct + '%</div>';
+}
+function pushLog(s, ans) {
+  const arrow = ans.steering_direction.choice === "left" ? "⬅️" : ans.steering_direction.choice === "right" ? "➡️" : "⬆️";
+  const el = document.createElement("div");
+  el.textContent = "V" + (stats.laps + 1) + " " + arrow + " " + s.speed + "km/h 🎯" + scoreToPct(ans.steering_percent) +
+    " 🛑" + scoreToPct(ans.brakes_percent) + " ⚡" + scoreToPct(ans.acceleration_percent) +
+    " lat " + s.lateral_error + "m " + (car.offroad ? "🚧" : "✅");
+  $("log").prepend(el);
+  while ($("log").children.length > 40) $("log").lastChild.remove();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
+  // pista
+  ctx.beginPath();
+  track.pts.forEach((p, i) => { const s = toScreen(p); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); });
+  ctx.closePath();
+  ctx.lineWidth = ROAD_HALF * 2 * view.scale; ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.strokeStyle = car.offroad ? "#3a2a2a" : "#2a3240"; ctx.stroke();
+  // línea central
+  ctx.beginPath();
+  track.pts.forEach((p, i) => { const s = toScreen(p); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); });
+  ctx.closePath();
+  ctx.setLineDash([10, 16]); ctx.lineWidth = 2; ctx.strokeStyle = "rgba(230,237,243,.28)"; ctx.stroke(); ctx.setLineDash([]);
+  // objetivo del lazo local
+  const pp = toScreen(lastPP);
+  ctx.beginPath(); ctx.arc(pp.x, pp.y, 5, 0, Math.PI * 2); ctx.fillStyle = "#58a6ff"; ctx.fill();
+  // auto (rotado por rumbo real)
+  const c = toScreen({ x: car.x, y: car.y });
+  ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(car.th);
+  ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-10, -8); ctx.lineTo(-10, 8); ctx.closePath();
+  ctx.fillStyle = car.offroad ? "#ff7b72" : "#7ee787"; ctx.fill();
+  ctx.restore();
+  // HUD
+  ctx.font = "600 15px " + getComputedStyle(document.body).fontFamily;
+  const over = car.limit && car.v * 3.6 > car.limit + 2;
+  ctx.fillStyle = over ? "#f2cc60" : "#e6edf3";
+  ctx.fillText("💨 " + Math.round(car.v * 3.6) + " km/h  ·  🚦 " + (car.limit || 0) + " km/h" + (over ? "  ⚠️ EXCESO" : ""), 14, 26);
+  ctx.fillStyle = "#8b98a9";
+  ctx.fillText("🏁 vuelta " + (stats.laps + 1) + " · incidentes " + stats.offTicks, 14, 48);
+  if (safetyW > 0.55) { ctx.fillStyle = "#f2cc60"; ctx.fillText("🛡️ lazo local corrigiendo", 14, 70); }
+  if (car.offroad) { ctx.fillStyle = "#ff7b72"; ctx.fillText("🚧 ¡FUERA DE PISTA!", 14, safetyW > 0.55 ? 92 : 70); }
+}
+
+/* ============================================================
+   7. Loop y controles
+   ============================================================ */
+let running = false, gen = 0;
+function syncRunBtn() {
+  $("btnRun").textContent = running ? "⏸️ Pausar" : "▶️ Iniciar";
+  $("statusTag").textContent = running ? "manejando…" : "detenido";
+  $("statusTag").style.color = running ? "var(--accent-2)" : "";
+}
+async function loop() {
+  const my = ++gen;
+  while (running && my === gen) {
+    await tick();
+    if (!running || my !== gen) break;
+    await sleep(120);
+  }
+}
+$("btnRun").addEventListener("click", () => {
+  if (!apiKey) { $("simErr").textContent = "Cargá la API key primero."; return; }
+  running = !running; syncRunBtn(); if (running) loop();
+});
+$("btnStep").addEventListener("click", () => { if (!apiKey) { $("simErr").textContent = "Cargá la API key primero."; return; } tick(); });
+$("btnReset").addEventListener("click", resetCar);
+$("btnTrack").addEventListener("click", () => { newTrack(); resetCar(); });
+
+newTrack();
+resetCar();
+updateMeter();
+setKeyState();
+syncRunBtn();
+</script>
+</body>
+</html>
