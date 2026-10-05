@@ -4,10 +4,10 @@
   "providers": {
     "litellm": {
       "name": "LiteLLM Curso",
-      "env": ["OPENAI_COMPATIBLE_API_KEY"],
+      "env": ["LITELLM_REDJAR_API_KEY"],
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
-        "baseURL": "<openai-compatible-url>"
+        "baseURL": "https://litellm.redj.ar/v1"
       },
       "models": {
         "deepseek/deepseek-v4.1-flash": {
